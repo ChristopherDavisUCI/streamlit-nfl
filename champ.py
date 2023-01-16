@@ -6,11 +6,13 @@ from itertools import product
 
 from odds_helper import odds_to_prob, prob_to_odds
 
-st.title('AFC Champion')
+st.title('Conference Champion markets')
+
+st.header("AFC Championship")
 
 df = pd.read_csv("2023-div-rd.csv")
-afc = df[df.Conf == "AFC"].set_index("Team")
-afc_seeds = afc["Seed"]
+df = df.set_index("Team")
+seeds = df["Seed"]
 
 df_spread_prob = pd.read_csv("spread_probs.csv")
 ser_prob = df_spread_prob.set_index("Spread", drop=True)
@@ -22,7 +24,7 @@ def spread_to_prob(s):
     return ser_prob.iloc[i].item()
 
 def get_higher_seed(team1, team2):
-    return team1 if afc_seeds[team1] < afc_seeds[team2] else team2
+    return team1 if seeds[team1] < seeds[team2] else team2
 
 placeholder = st.empty()
 
@@ -107,4 +109,102 @@ if (len(val_dict) == 6) and all(v != "" for v in val_dict.values()):
 else:
     st.write("(Be sure to enter all six values.)")
     
+st.header("NFC Championship")
+
+placeholder = st.empty()
+
+use_prob_nfc = st.checkbox('Use probabilities instead of spreads', key="prob_checkbox")
+
+col1, col2, buff = st.columns([5,5,5])
+
+def make_matchup(team1, team2):
+    hteam = get_higher_seed(team1, team2)
+    ateam = team1 if hteam == team2 else team2
+    return st.text_input(f"{hteam} vs {ateam}")
+
+wc_pair = ("TB", "DAL")
+div_pairs = [("PHI", "NYG"), ("SF", "TB"), ("SF", "DAL")]
+teams = list({team for pair in div_pairs for team in pair})
+
+conf_pairs = list(product(("PHI", "NYG"), ("SF", "TB", "DAL")))
+
+val_dict = {}
+
+with col1:
+    st.write(f"Enter your predicted {'probability' if use_prob_nfc else 'spread'}.")
+    st.subheader("Wild-card round")
+    res = make_matchup(*wc_pair)
+    val_dict[wc_pair] = res
+    st.subheader("Divisional round")
+    for pair in div_pairs:
+        res = make_matchup(*pair)
+        val_dict[pair] = res
+    if res != "":
+        hteam = get_higher_seed(*pair)
+        ateam = pair[0] if hteam == pair[1] else pair[1]
+        p = float(res) if use_prob_nfc else spread_to_prob(res)
+        st.write(f"Example: We estimate {hteam} has a {p:.0%} chance of beating {ateam} in the divisional round.")
+
+with col2:
+    st.subheader("Conference championship")
+    for pair in conf_pairs:
+        val_dict[pair] = make_matchup(*pair)
+
+
+def get_team_prob(team, prob_dict):
+    output_prob = 0
+
+    # Assume wc_team wins the wild card round
+    for wc_team in wc_pair:
+        if (team in wc_pair) and (team != wc_team):
+            continue
+        scale = get_pair_prob(wc_team, wc_pair)
+        hyp_div = [("PHI", "NYG"), ("SF", wc_team)]
+        hyp_teams = [t for pair in hyp_div for t in pair]
+
+        orig = next(pair for pair in hyp_div if team in pair)
+        prob = get_pair_prob(team, orig)
+        opp_pair = next(pair for pair in hyp_div if team not in pair)
+
+        conf_pairs = product(*hyp_div)
+        
+        next_prob = 0
+        for pair in conf_pairs:
+            if team not in pair:
+                continue
+            temp_prob = get_pair_prob(team, pair)
+            opp = next(t for t in pair if t != team)
+            opp_prob = get_pair_prob(opp, opp_pair)
+            next_prob += opp_prob*temp_prob
+        
+        output_prob += scale*prob*next_prob
     
+    return output_prob
+
+def get_pair_prob(team, pair):
+    p = prob_dict[pair]
+    if get_higher_seed(*pair) == team:
+        return p
+    else:
+        return 1-p
+
+st.subheader("Estimated fair prices to be NFC Champion:")
+
+all_probs = {}
+
+if (len(val_dict) == 10) and all(v != "" for v in val_dict.values()):
+    if use_prob_nfc:
+        prob_dict = {k:float(v) for k,v in val_dict.items()}
+    else:
+        prob_dict = {k:spread_to_prob(v) for k,v in val_dict.items()}
+
+    for team in teams:
+        prob = get_team_prob(team, prob_dict)
+        all_probs[team] = prob
+
+    sorted_keys = sorted(all_probs.keys(), key=lambda k: all_probs[k], reverse=True)
+    for team in sorted_keys:
+        prob = all_probs[team]
+        st.write(f"{team}: {prob_to_odds(prob)} (probability: {prob:.3f})")
+else:
+    st.write("(Be sure to enter all ten values.)")
