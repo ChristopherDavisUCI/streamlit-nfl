@@ -135,17 +135,21 @@ def replace(match, sep):
 def update_prob(dct, k, p):
     dct[k] = dct.get(k,0) + p
 
-for outcome in product([True, False], repeat=5):
-    ser_outcome, p = run_sim(outcome)
-    # st.write(ser_outcome)
-    sb_winner = ser_outcome.iloc[-1]
-    update_prob(results["SUPER BOWL 57 (2023) - Odds to Win"], sb_winner, p)
-    # AFC team always written first
-    afc_champ = ser_outcome.iloc[-3]
-    nfc_champ = ser_outcome.iloc[-2]
-    sb_loser = next(t for t in (afc_champ, nfc_champ) if t != sb_winner)
-    update_prob(results["SUPER BOWL 57 (2023) - Exact Finalists"], f"{afc_champ} vs {nfc_champ}", p)
-    update_prob(results["SUPER BOWL 57 (2023) - Exact Result"], f"{sb_winner} to beat {sb_loser}", p)
+
+try:
+    for outcome in product([True, False], repeat=5):
+        ser_outcome, p = run_sim(outcome)
+        # st.write(ser_outcome)
+        sb_winner = ser_outcome.iloc[-1]
+        update_prob(results["SUPER BOWL 57 (2023) - Odds to Win"], sb_winner, p)
+        # AFC team always written first
+        afc_champ = ser_outcome.iloc[-3]
+        nfc_champ = ser_outcome.iloc[-2]
+        sb_loser = next(t for t in (afc_champ, nfc_champ) if t != sb_winner)
+        update_prob(results["SUPER BOWL 57 (2023) - Exact Finalists"], f"{afc_champ} vs {nfc_champ}", p)
+        update_prob(results["SUPER BOWL 57 (2023) - Exact Result"], f"{sb_winner} to beat {sb_loser}", p)
+except ValueError:
+    st.write("Enter all spreads above to see the results")
     
 
 def display_results(name):
