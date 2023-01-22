@@ -104,13 +104,13 @@ def process_rd(df, tup):
 
 
 def run_sim(tup):
-    div_outcome = process_rd(div_rd, tup[:2])
-    div_winners = list(div_outcome["winner"].values) + ["KC", "PHI"]
+    div_outcome = process_rd(div_rd, tup[:1])
+    div_winners = list(div_outcome["winner"].values) + ["KC", "PHI", "CIN"]
     conf_matchups = conf_rd[conf_rd["Team1"].isin(div_winners) & conf_rd["Team2"].isin(div_winners)]
-    conf_outcome = process_rd(conf_matchups, tup[2:4])
+    conf_outcome = process_rd(conf_matchups, tup[1:3])
     conf_winners = conf_outcome["winner"].values
     sb_matchup = sb_rd[sb_rd["Team1"].isin(conf_winners) & sb_rd["Team2"].isin(conf_winners)]
-    sb_outcome = process_rd(sb_matchup, tup[4:])
+    sb_outcome = process_rd(sb_matchup, tup[3:])
     df_outcome = pd.concat([div_outcome, conf_outcome, sb_outcome], axis=0).reset_index(drop=True)
     prob = np.prod(df_outcome["prob"])
     return (df_outcome["winner"], prob)
@@ -137,7 +137,7 @@ def update_prob(dct, k, p):
 
 
 try:
-    for outcome in product([True, False], repeat=5):
+    for outcome in product([True, False], repeat=4):
         ser_outcome, p = run_sim(outcome)
         # st.write(ser_outcome)
         sb_winner = ser_outcome.iloc[-1]
