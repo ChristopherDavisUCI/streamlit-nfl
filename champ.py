@@ -10,12 +10,10 @@ from odds_helper import odds_to_prob, prob_to_odds
 abbr_dict = {
     "Chiefs": "KC",
     "Bills": "BUF",
-    "Jaguars": "JAX",
     "Bengals": "CIN",
     "Cowboys": "DAL",
     "Eagles": "PHI",
     "49ers": "SF",
-    "Giants": "NYG"
 }
 
 def get_abbr(s):
@@ -23,37 +21,6 @@ def get_abbr(s):
 
 st.title('Super Bowl markets')
 
-st.write("Fill in your projected spreads below to get personalized results.  Odds are from Bovada as of 12:00pm ET on Wednesday.")
-
-placeholder = st.empty()
-
-
-with open("nfl.pickle", "rb") as f:
-    odds_dict = pickle.load(f)
-
-sb_name = "SUPER BOWL 57 (2023) - Odds to Win"
-odds_dict[sb_name] = {get_abbr(k): v for k,v in odds_dict[sb_name].items()}
-
-st.subheader(sb_name)
-
-sb_empty = [st.empty() for _ in odds_dict[sb_name]]
-
-def replace(match, sep):
-    return f" {sep} ".join([get_abbr(x) for x in match.split(f" {sep} ")])
-
-fin_name = "SUPER BOWL 57 (2023) - Exact Finalists"
-odds_dict[fin_name] = {replace(k, "vs"): v for k,v in odds_dict[fin_name].items()}
-
-st.subheader(fin_name)
-
-fin_empty = [st.empty() for _ in odds_dict[fin_name]]
-
-res_name = "SUPER BOWL 57 (2023) - Exact Result"
-odds_dict[res_name] = {replace(k, "to beat"): v for k,v in odds_dict[res_name].items()}
-
-st.subheader(res_name)
-
-res_empty = [st.empty() for _ in odds_dict[res_name]]
 
 st.header("Projected spreads")
 
@@ -61,8 +28,7 @@ st.markdown(
 """Enter the spread, with a **positive number meaning the listed team is favored**. For example, if you enter 2.5 for BUF vs PHI, that means you project Buffalo to be favored by 2.5, and if you enter -2.5, then you project PHI to be favored by 2.5.""")
 
 def make_matchup(row):
-    return st.text_input(f"{row['Team1']} vs {row['Team2']}.  Projection: {row['Favorite']} by",
-        value=row["Spread"])
+    return st.text_input(f"{row['Team1']} vs {row['Team2']}.  Projection: {row['Favorite']} by")
 
 def display_matchups(week, df_spreads, spread_dict):
     df_sub = df_spreads[df_spreads["Week"] == week]
@@ -70,7 +36,7 @@ def display_matchups(week, df_spreads, spread_dict):
         res = make_matchup(row)
         spread_dict[(row["Team1"], row["Team2"])] = res
 
-df_spreads = pd.read_csv("spreads.csv")
+df_spreads = pd.read_csv("spreads-Jan22.csv")
 
 div_rd = df_spreads[df_spreads["Week"] == 1]
 conf_rd = df_spreads[df_spreads["Week"] == 2]
@@ -138,13 +104,13 @@ def process_rd(df, tup):
 
 
 def run_sim(tup):
-    div_outcome = process_rd(div_rd, tup[:4])
-    div_winners = div_outcome["winner"].values
+    div_outcome = process_rd(div_rd, tup[:2])
+    div_winners = list(div_outcome["winner"].values) + ["KC", "PHI"]
     conf_matchups = conf_rd[conf_rd["Team1"].isin(div_winners) & conf_rd["Team2"].isin(div_winners)]
-    conf_outcome = process_rd(conf_matchups, tup[4:6])
+    conf_outcome = process_rd(conf_matchups, tup[2:4])
     conf_winners = conf_outcome["winner"].values
     sb_matchup = sb_rd[sb_rd["Team1"].isin(conf_winners) & sb_rd["Team2"].isin(conf_winners)]
-    sb_outcome = process_rd(sb_matchup, tup[6:])
+    sb_outcome = process_rd(sb_matchup, tup[4:])
     df_outcome = pd.concat([div_outcome, conf_outcome, sb_outcome], axis=0).reset_index(drop=True)
     prob = np.prod(df_outcome["prob"])
     return (df_outcome["winner"], prob)
@@ -154,10 +120,22 @@ results["SUPER BOWL 57 (2023) - Odds to Win"] = {}
 results["SUPER BOWL 57 (2023) - Exact Finalists"] = {}
 results["SUPER BOWL 57 (2023) - Exact Result"] = {}
 
+
+sb_name = "SUPER BOWL 57 (2023) - Odds to Win"
+
+fin_name = "SUPER BOWL 57 (2023) - Exact Finalists"
+
+res_name = "SUPER BOWL 57 (2023) - Exact Result"
+
+
+def replace(match, sep):
+    return f" {sep} ".join([get_abbr(x) for x in match.split(f" {sep} ")])
+
+
 def update_prob(dct, k, p):
     dct[k] = dct.get(k,0) + p
 
-for outcome in product([True, False], repeat=7):
+for outcome in product([True, False], repeat=5):
     ser_outcome, p = run_sim(outcome)
     # st.write(ser_outcome)
     sb_winner = ser_outcome.iloc[-1]
@@ -170,21 +148,17 @@ for outcome in product([True, False], repeat=7):
     update_prob(results["SUPER BOWL 57 (2023) - Exact Result"], f"{sb_winner} to beat {sb_loser}", p)
     
 
-def display_results(empty_list, name):
-    odds = odds_dict[name]
+def display_results(name):
+    st.header(name)
+
     probs = results[name]
     sorted_keys = sorted(probs.keys(), key=lambda k: probs[k], reverse=True)
 
-    for empty, k in zip(empty_list, sorted_keys):
-        good_bet = (odds_to_prob(odds[k]) < probs[k])
-        icon = "🔨" if good_bet else " "
-        empty.markdown(f"**{k}**. Odds {odds[k]}.  Computed fair odds {prob_to_odds(probs[k])}. {icon}{icon}")
+    for k in sorted_keys:
+        st.markdown(f"**{k}**. Computed fair odds {prob_to_odds(probs[k])}")
 
-display_results(sb_empty, sb_name)
-
-display_results(fin_empty, fin_name)
-
-display_results(res_empty, res_name)
+for name in [sb_name, fin_name, res_name]:
+    display_results(name)
 
 
 # st.header("AFC Championship")
@@ -362,7 +336,7 @@ display_results(res_empty, res_name)
 
 # st.subheader("Estimated fair prices to be NFC Champion:")
 
-# all_probs = {}
+# `all_probs = {}
 
 # if (len(val_dict) == 10) and all(v != "" for v in val_dict.values()):
 #     if use_prob_nfc:
