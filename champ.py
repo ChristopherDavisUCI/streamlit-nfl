@@ -115,17 +115,17 @@ def run_sim(tup):
     prob = np.prod(df_outcome["prob"])
     return (df_outcome["winner"], prob)
 
+sb_name = "SUPER BOWL - Odds to Win"
+fin_name = "SUPER BOWL - Exact Finalists"
+res_name = "SUPER BOWL - Exact Result"
+afc_name = "AFC Champion"
+nfc_name = "NFC Champion"
+
+markets = [sb_name, fin_name, res_name, afc_name, nfc_name]
+
 results = {}
-results["SUPER BOWL 57 (2023) - Odds to Win"] = {}
-results["SUPER BOWL 57 (2023) - Exact Finalists"] = {}
-results["SUPER BOWL 57 (2023) - Exact Result"] = {}
-
-
-sb_name = "SUPER BOWL 57 (2023) - Odds to Win"
-
-fin_name = "SUPER BOWL 57 (2023) - Exact Finalists"
-
-res_name = "SUPER BOWL 57 (2023) - Exact Result"
+for name in markets:
+    results[name] = {}
 
 
 def replace(match, sep):
@@ -141,13 +141,15 @@ try:
         ser_outcome, p = run_sim(outcome)
         # st.write(ser_outcome)
         sb_winner = ser_outcome.iloc[-1]
-        update_prob(results["SUPER BOWL 57 (2023) - Odds to Win"], sb_winner, p)
+        update_prob(results[sb_name], sb_winner, p)
         # AFC team always written first
         afc_champ = ser_outcome.iloc[-3]
         nfc_champ = ser_outcome.iloc[-2]
         sb_loser = next(t for t in (afc_champ, nfc_champ) if t != sb_winner)
-        update_prob(results["SUPER BOWL 57 (2023) - Exact Finalists"], f"{afc_champ} vs {nfc_champ}", p)
-        update_prob(results["SUPER BOWL 57 (2023) - Exact Result"], f"{sb_winner} to beat {sb_loser}", p)
+        update_prob(results[fin_name], f"{afc_champ} vs {nfc_champ}", p)
+        update_prob(results[res_name], f"{sb_winner} to beat {sb_loser}", p)
+        update_prob(results[afc_name], afc_champ, p)
+        update_prob(results[nfc_name], nfc_champ, p)
 except ValueError:
     st.write("Enter all spreads above to see the results")
     
@@ -161,7 +163,7 @@ def display_results(name):
     for k in sorted_keys:
         st.markdown(f"**{k}**. Computed fair odds {prob_to_odds(probs[k])}")
 
-for name in [sb_name, fin_name, res_name]:
+for name in markets:
     display_results(name)
 
 
