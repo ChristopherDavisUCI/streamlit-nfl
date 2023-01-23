@@ -9,12 +9,12 @@ from odds_helper import odds_to_prob, prob_to_odds
 
 abbr_dict = {
     "Chiefs": "KC",
-    "Bills": "BUF",
     "Bengals": "CIN",
-    "Cowboys": "DAL",
     "Eagles": "PHI",
     "49ers": "SF",
 }
+
+teams = abbr_dict.values()
 
 def get_abbr(s):
     return abbr_dict[s.split()[-1]]
@@ -38,7 +38,6 @@ def display_matchups(week, df_spreads, spread_dict):
 
 df_spreads = pd.read_csv("spreads-Jan22.csv")
 
-div_rd = df_spreads[df_spreads["Week"] == 1]
 conf_rd = df_spreads[df_spreads["Week"] == 2]
 sb_rd = df_spreads[df_spreads["Week"] == 3]
 
@@ -50,13 +49,9 @@ def get_favorite(team1, team2):
 
 spread_dict = {}
 
-
-
 col1, _, col2, _2 = st.columns([5,2, 5, 3])
 
 with col1:
-    st.subheader("Divisional round")
-    display_matchups(1, df_spreads, spread_dict)
     st.subheader("Conference championship round")
     display_matchups(2, df_spreads, spread_dict)
 
@@ -104,24 +99,20 @@ def process_rd(df, tup):
 
 
 def run_sim(tup):
-    div_outcome = process_rd(div_rd, tup[:1])
-    div_winners = list(div_outcome["winner"].values) + ["KC", "PHI", "CIN"]
-    conf_matchups = conf_rd[conf_rd["Team1"].isin(div_winners) & conf_rd["Team2"].isin(div_winners)]
-    conf_outcome = process_rd(conf_matchups, tup[1:3])
+    conf_matchups = conf_rd
+    conf_outcome = process_rd(conf_matchups, tup[:2])
     conf_winners = conf_outcome["winner"].values
     sb_matchup = sb_rd[sb_rd["Team1"].isin(conf_winners) & sb_rd["Team2"].isin(conf_winners)]
-    sb_outcome = process_rd(sb_matchup, tup[3:])
-    df_outcome = pd.concat([div_outcome, conf_outcome, sb_outcome], axis=0).reset_index(drop=True)
+    sb_outcome = process_rd(sb_matchup, tup[2:])
+    df_outcome = pd.concat([conf_outcome, sb_outcome], axis=0).reset_index(drop=True)
     prob = np.prod(df_outcome["prob"])
     return (df_outcome["winner"], prob)
 
 sb_name = "SUPER BOWL - Odds to Win"
 fin_name = "SUPER BOWL - Exact Finalists"
 res_name = "SUPER BOWL - Exact Result"
-afc_name = "AFC Champion"
-nfc_name = "NFC Champion"
 
-markets = [sb_name, fin_name, res_name, afc_name, nfc_name]
+markets = [sb_name, fin_name, res_name]
 
 results = {}
 for name in markets:
@@ -137,7 +128,7 @@ def update_prob(dct, k, p):
 
 
 try:
-    for outcome in product([True, False], repeat=4):
+    for outcome in product([True, False], repeat=3):
         ser_outcome, p = run_sim(outcome)
         # st.write(ser_outcome)
         sb_winner = ser_outcome.iloc[-1]
@@ -148,8 +139,6 @@ try:
         sb_loser = next(t for t in (afc_champ, nfc_champ) if t != sb_winner)
         update_prob(results[fin_name], f"{afc_champ} vs {nfc_champ}", p)
         update_prob(results[res_name], f"{sb_winner} to beat {sb_loser}", p)
-        update_prob(results[afc_name], afc_champ, p)
-        update_prob(results[nfc_name], nfc_champ, p)
 except ValueError:
     st.write("Enter all spreads above to see the results")
     
