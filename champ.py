@@ -111,8 +111,9 @@ def run_sim(tup):
 sb_name = "SUPER BOWL - Odds to Win"
 fin_name = "SUPER BOWL - Exact Finalists"
 res_name = "SUPER BOWL - Exact Result"
+lose_name = "SUPER BOWL - Losing Team"
 
-markets = [sb_name, fin_name, res_name]
+markets = [sb_name, fin_name, res_name, lose_name]
 
 results = {}
 for name in markets:
@@ -139,6 +140,7 @@ try:
         sb_loser = next(t for t in (afc_champ, nfc_champ) if t != sb_winner)
         update_prob(results[fin_name], f"{afc_champ} vs {nfc_champ}", p)
         update_prob(results[res_name], f"{sb_winner} to beat {sb_loser}", p)
+        update_prob(results[lose_name], sb_loser, p)
 except ValueError:
     st.write("Enter all spreads above to see the results")
     
