@@ -25,7 +25,7 @@ st.title('Super Bowl markets')
 st.header("Projected spreads")
 
 st.markdown(
-"""Enter the spread, with a **positive number meaning the listed team is favored**. For example, if you enter 2.5 for BUF vs PHI, that means you project Buffalo to be favored by 2.5, and if you enter -2.5, then you project PHI to be favored by 2.5.""")
+"""Enter the spread, with a **positive number meaning the listed team is favored**. For example, if you enter 2.5 for KC vs PHI, that means you project Kansas City to be favored by 2.5, and if you enter -2.5, then you project PHI to be favored by 2.5.""")
 
 def make_matchup(row):
     return st.text_input(f"{row['Team1']} vs {row['Team2']}.  Projection: {row['Favorite']} by")
